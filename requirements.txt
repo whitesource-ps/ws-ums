@@ -1,0 +1,4 @@
+ws_sdk~=0.5
+uvicorn~=0.14.0
+fastapi~=0.66.0
+pydantic~=1.8.2

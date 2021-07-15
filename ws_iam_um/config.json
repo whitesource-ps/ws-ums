@@ -1,0 +1,4 @@
+{
+  "MandatoryEnvVars": ["ws_url", "ws_user_key", "ws_global_token"],
+  "InviterEmail": "whitesource.ps@gmail.com"
+}
