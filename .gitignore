@@ -16,9 +16,11 @@ target/
 *.png
 *.tar.gz
 *.url
+*.whl
 
 # Excluded Files - Naming Convention
 local-env.*
 /venv/
 /build/
 /dist/
+

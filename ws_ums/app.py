@@ -2,27 +2,34 @@ import json
 import logging
 import os
 import sys
+from typing import Optional
+
 import uvicorn
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
-from ws_sdk.web import WS
+from pydantic import BaseModel, validator
 from ws_sdk import ws_constants, ws_utilities
-
-LOG_LEVEL = logging.DEBUG if os.environ.get("DEBUG", logging.INFO) else logging.INFO
-logging.getLogger('urllib3').setLevel(logging.INFO)
-logging.basicConfig(level=LOG_LEVEL, stream=sys.stdout)
+from ws_sdk.web import WS
 
 with open("config.json", 'r') as f:
     config = json.loads(f.read())
 config['ws_url'] = os.environ.get('WS_URL')
 config['ws_user_key'] = os.environ.get('WS_USER_KEY')
 config['ws_global_token'] = os.environ.get('WS_GLOBAL_TOKEN')
-config['ws_conn_global'] = WS(url=os.environ.get('ws_url'),
-                              user_key=os.environ.get('ws_user_key'),
-                              token=os.environ.get('ws_global_token'),
+config['InviterEmail'] = os.environ.get('WS_INVITER')
+config['ws_conn_global'] = WS(url=config['ws_url'],
+                              user_key=config['ws_user_key'],
+                              token=config['ws_global_token'],
                               token_type=ws_constants.GLOBAL)
 
-api = FastAPI(title="WS_IAM_UM",  swagger_static={"favicon": "favicon.png"})
+LOG_LEVEL = logging.DEBUG if os.environ.get("DEBUG", logging.INFO) else logging.INFO
+logging.basicConfig(level=LOG_LEVEL,
+                    format='%(levelname)s %(asctime)s %(message)s',
+                    datefmt='%y-%m-%d %H:%M:%S',
+                    handlers=[logging.FileHandler(filename=config['LogPath']),
+                              logging.StreamHandler(sys.stdout)])
+logging.getLogger('urllib3').setLevel(logging.INFO)
+
+app = FastAPI(title="WS_UMS", swagger_static={"favicon": "favicon.png"})
 
 
 def convert_gh_orgs_to_ws_prods(gh_org_names) -> list:
@@ -69,19 +76,27 @@ def convert_gh_orgs_to_ws_prods(gh_org_names) -> list:
 
 
 class CreateUserRequest(BaseModel):
-    user: str
-    email: str
-    role: str
-    gh_org_names: list
+    userName: str
+    userEmail: str
+    wsRole: str
+    ghOrgNames: list
+
+    @validator('wsRole')
+    def validate_ws_role(cls, ws_role):
+        if ws_role not in ws_constants.RoleTypes.PROD_ROLES_TYPES:
+            raise ValueError(f'Supported Roles: {ws_constants.RoleTypes.PROD_ROLES_TYPES}')
+        return ws_role
 
 
-@api.put("/create_user_in_ws")
+@app.put("/createAndAssignUser")
 async def api_create_user_in_ws_products(create_user_req: CreateUserRequest,
                                          request: Request):
-    return create_user_in_ws_products(username=create_user_req.user,
-                                      email=create_user_req.email,
-                                      role=create_user_req.role,
-                                      gh_org_names=create_user_req.gh_org_names)
+    logging.info(f"Recieved request: {request.url} from: {request.client.host} with body: {create_user_req}")
+
+    return create_user_in_ws_products(username=create_user_req.userName,
+                                      email=create_user_req.userEmail,
+                                      role=create_user_req.wsRole,
+                                      gh_org_names=create_user_req.ghOrgNames)
 
 
 def create_user_in_ws_products(username: str, email: str, role: str, gh_org_names: list) -> dict:
@@ -113,17 +128,19 @@ def create_user_in_ws_products(username: str, email: str, role: str, gh_org_name
 
             atg = tmp_conn.assign_to_scope(role_type=role, group=role, token=ws_prod['token'])
 
-        return create_response({})
+        return create_response("Successfully set product assignments")
 
 
 class DeleteUserRequest(BaseModel):
     email: str
-    gh_org_names: list
+    gh_org_names: Optional[list] = None
 
 
-@api.put("/delete_user_from_ws")
+@app.put("/deleteUser")
 async def api_delete_user_from_ws(delete_user_req: DeleteUserRequest,
                                   request: Request):
+    logging.info(f"Received request: {request.url} from: {request.client.host} with body: {create_user_req}")
+
     return delete_user_from_ws(email=delete_user_req.email,
                                gh_org_names=delete_user_req.gh_org_names)
 
@@ -132,15 +149,17 @@ def delete_user_from_ws(email, gh_org_names):
     if not is_valid_email():
         logging.error(f"Invalid Email: {email}")
     else:
-        ws_prods = convert_gh_orgs_to_ws_prods(gh_org_names)
-        org_tokens = set()
-        for prod in ws_prods:
-            org_tokens.add(prod['org_token'])
+        if gh_org_names:
+            ws_prods = convert_gh_orgs_to_ws_prods(gh_org_names)
+            org_tokens = set()
+            for prod in ws_prods:
+                org_tokens.add(prod['org_token'])
 
-        for token in org_tokens:
-            config['ws_conn_global'].delete_user(email=email, org_token=token)
-
-        return create_response({})
+            for token in org_tokens:
+                config['ws_conn_global'].delete_user(email=email, org_token=token)
+        else:                                                                   # If not org was stated, delete from all
+            config['ws_conn_global'].delete_user(email=email)
+        return create_response("Successfully deleted user")
 
 
 def is_valid_email():
@@ -148,7 +167,7 @@ def is_valid_email():
 
 
 def create_response(payload, status=200):
-    return json.dumps(payload), status, {'content-type': 'application/json'}
+    return {"message:": json.dumps(payload)}, status, {'content-type': 'application/json'}
 
 
 def check_config():
@@ -162,14 +181,4 @@ def check_config():
 
 if __name__ == '__main__':
     if check_config():
-        uvicorn.run(app="app:api", host="0.0.0.0", port=8000, reload=False, debug=False)
-    else:
-        logging.error("Error starting Uvicorn")
-    # init()
-    # ret = create_user_in_ws_products(username="TEST",
-    #                                  email="test1@test.com",
-    #                                  role=ws_constants.RoleTypes.P_ALERT_RECEIVERS,
-    #                                  gh_org_names=["nexus", 'WebGoat', 'fuzz1'])
-    #
-    # ret = delete_user_from_ws(email="test1@test.com",
-    #                           gh_org_names=["nexus", 'WebGoat', 'fuzz1'])
+        uvicorn.run(app="app:app", host="0.0.0.0", port=8000, reload=False, debug=False)
