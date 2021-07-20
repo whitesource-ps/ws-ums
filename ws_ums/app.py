@@ -21,7 +21,7 @@ config['ws_conn_global'] = WS(url=config['ws_url'],
                               token=config['ws_global_token'],
                               token_type=ws_constants.GLOBAL)
 
-LOG_LEVEL = logging.DEBUG if os.environ.get("DEBUG", logging.INFO) else logging.INFO
+LOG_LEVEL = logging.DEBUG if os.environ.get("DEBUG") == 1 else logging.INFO
 logging.basicConfig(level=LOG_LEVEL,
                     format='%(levelname)s %(asctime)s %(message)s',
                     datefmt='%y-%m-%d %H:%M:%S',
@@ -38,13 +38,15 @@ def convert_gh_orgs_to_ws_prods(gh_org_names) -> list:
     :param gh_org_names: list of GH Organizations
     :return:  list of WhiteSource Products (dictionaries)
     """
-    def convert_gh_org_name_to_ws_prod_name(name) -> str:
+    def convert_gh_org_name_to_ws_prod_name(name: str) -> str:
         """
         Convert Given GH Organization name to WhiteSource Product name
         :param name:
         :return:
         """
-        fix_name = name
+        global config
+        for char in config['GHCharsToReplace']:
+            fix_name = name.replace(char, config['CharReplaceWith'])
         logging.debug(f"Fixed name from {name} to {fix_name}")
 
         return fix_name
@@ -56,21 +58,22 @@ def convert_gh_orgs_to_ws_prods(gh_org_names) -> list:
         :return: WS Product (dictionary)
         """
         ws_prod_name = convert_gh_org_name_to_ws_prod_name(gh_org_n)
-        prod = all_prods_dict.get(ws_prod_name)                      # Filtering out non-existing GH Organizations
-        if prod:
-            logging.debug(f"Found WS Product: {prod['name']} Token: {prod['token']} Org Token: {prod['org_token']}")
-        else:
-            logging.warning(f"GitHub organization: {gh_org_n} (WS Product name: {ws_prod_name}) was not found")
 
-        return prod
+        return all_prods_dict.get(ws_prod_name)                      # Filtering out non-existing GH Organizations
+
     global config
     logging.debug("Converting GitHub Organization names to WS Product names")
     all_prods_in_global_org = config['ws_conn_global'].get_scopes(scope_type=ws_constants.PRODUCT)
     all_prods_dict = ws_utilities.convert_dict_list_to_dict(all_prods_in_global_org, "name")
+
     ws_prods = []
     for gh_org_name in gh_org_names:
         curr_prod = convert_gh_org_to_ws_prod(gh_org_name)
-        ws_prods.append(curr_prod)
+        if curr_prod is None:
+            logging.warning(f"GitHub Organization: {gh_org_name} was not found in WhiteSource. Skipping")
+        else:
+            logging.debug(f"Found WS Product: {curr_prod['name']} Token: {curr_prod['token']} Org Token: {curr_prod['org_token']}")
+            ws_prods.append(curr_prod)
 
     return ws_prods
 
@@ -91,7 +94,7 @@ class CreateUserRequest(BaseModel):
 @app.put("/createAndAssignUser")
 async def api_create_user_in_ws_products(create_user_req: CreateUserRequest,
                                          request: Request):
-    logging.info(f"Recieved request: {request.url} from: {request.client.host} with body: {create_user_req}")
+    logging.info(f"Received request: {request.url} from: {request.client.host} with body: {create_user_req}")
 
     return create_user_in_ws_products(username=create_user_req.userName,
                                       email=create_user_req.userEmail,
@@ -118,31 +121,36 @@ def create_user_in_ws_products(username: str, email: str, role: str, gh_org_name
             tmp_conn = WS(user_key=config['ws_conn_global'].user_key,
                           token=ws_prod['org_token'],
                           url=config['ws_conn_global'].url)
+            group_name = f"{ws_prod['name']} {role}"
             # Actions that are only necessary once on an organization
             if ws_prod['org_token'] not in org_tokens:
-                logging.debug(f"Creating user: {username} and Group: {role} on Organization: {ws_prod['org_token']}")
+                group_name = f"{ws_prod['name']} {role}"
+                logging.info(f"Creating user: {username} on Organization token: {ws_prod['org_token']}")
                 org_tokens.add(ws_prod['org_token'])
                 cu = tmp_conn.create_user(username, email, config['InviterEmail'])
-                cg = tmp_conn.create_group(role)
-                autg = tmp_conn.assign_user_to_group(email, role)
 
-            atg = tmp_conn.assign_to_scope(role_type=role, group=role, token=ws_prod['token'])
+            logging.info(f"Creating group: \'{group_name}\' on Organization token: {ws_prod['org_token']}")
+            cg = tmp_conn.create_group(group_name)
+            logging.info(f"Assign group: \'{group_name}\' to role {role}:  role on Organization token: {ws_prod['org_token']}")
+            atg = tmp_conn.assign_to_scope(role_type=role, group=group_name, token=ws_prod['token'])
+            logging.info(f"Assign user: {username} to group: \'{group_name}\' on Organization token: {ws_prod['org_token']}")
+            autg = tmp_conn.assign_user_to_group(email, group_name)
 
         return create_response("Successfully set product assignments")
 
 
 class DeleteUserRequest(BaseModel):
     email: str
-    gh_org_names: Optional[list] = None
+    ghOrgNames: Optional[list] = None
 
 
 @app.put("/deleteUser")
 async def api_delete_user_from_ws(delete_user_req: DeleteUserRequest,
                                   request: Request):
-    logging.info(f"Received request: {request.url} from: {request.client.host} with body: {create_user_req}")
+    logging.info(f"Received request: {request.url} from: {request.client.host} with body: {delete_user_req}")
 
     return delete_user_from_ws(email=delete_user_req.email,
-                               gh_org_names=delete_user_req.gh_org_names)
+                               gh_org_names=delete_user_req.ghOrgNames)
 
 
 def delete_user_from_ws(email, gh_org_names):
@@ -155,9 +163,12 @@ def delete_user_from_ws(email, gh_org_names):
             for prod in ws_prods:
                 org_tokens.add(prod['org_token'])
 
+            logging.info(f"Deleting email {email} from organizations tokens: {org_tokens}")
+
             for token in org_tokens:
                 config['ws_conn_global'].delete_user(email=email, org_token=token)
         else:                                                                   # If not org was stated, delete from all
+            logging.info(f"Deleting email {email} from all organizations")
             config['ws_conn_global'].delete_user(email=email)
         return create_response("Successfully deleted user")
 
