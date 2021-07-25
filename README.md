@@ -1,7 +1,9 @@
 ![Logo](https://whitesource-resources.s3.amazonaws.com/ws-sig-images/Whitesource_Logo_178x44.png)  
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GitHub release](https://img.shields.io/github/release/whitesource-ps/wss-template.svg)](https://github.com/whitesource-ps/wss-template/releases/latest)  
+[![GitHub release](https://img.shields.io/github/release/whitesource-ps/ws-ums.svg)](https://github.com/whitesource-ps/ws-ums/releases/latest)  
+[![GitHub package](https://img.shields.io/github/package-json/v/whitesource-ps/ws-ums)](https://github.com/whitesource-ps/ws-ums/pkgs/container/ws-ums)
+
 # WhiteSource IAM User Management
 API Service to perform users operations on large scale environment (Global Organizations).
 The service supports 2 actions:
