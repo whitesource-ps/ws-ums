@@ -79,7 +79,7 @@ def convert_gh_orgs_to_ws_prods(gh_org_names) -> list:
 
 
 class CreateUserRequest(BaseModel):
-    userName: str
+    fullName: str
     userEmail: str
     wsRole: str
     ghOrgNames: list
@@ -96,7 +96,7 @@ async def api_create_user_in_ws_products(create_user_req: CreateUserRequest,
                                          request: Request):
     logging.info(f"Received request: {request.url} from: {request.client.host} with body: {create_user_req}")
 
-    return create_user_in_ws_products(username=create_user_req.userName,
+    return create_user_in_ws_products(username=create_user_req.fullName,
                                       email=create_user_req.userEmail,
                                       role=create_user_req.wsRole,
                                       gh_org_names=create_user_req.ghOrgNames)
@@ -146,7 +146,7 @@ class DeleteUserRequest(BaseModel):
 
 @app.put("/deleteUser")
 async def api_delete_user_from_ws(delete_user_req: DeleteUserRequest,
-                                  request: Request):
+                                  request: Request) -> dict:
     logging.info(f"Received request: {request.url} from: {request.client.host} with body: {delete_user_req}")
 
     return delete_user_from_ws(email=delete_user_req.email,
@@ -177,7 +177,7 @@ def is_valid_email():
     return True
 
 
-def create_response(payload, status=200):
+def create_response(payload, status=200) -> dict:
     return {"message:": json.dumps(payload)}, status, {'content-type': 'application/json'}
 
 
