@@ -19,7 +19,8 @@ config['InviterEmail'] = os.environ.get('WS_INVITER')
 config['ws_conn_global'] = WS(url=config['ws_url'],
                               user_key=config['ws_user_key'],
                               token=config['ws_global_token'],
-                              token_type=ws_constants.GLOBAL)
+                              token_type=ws_constants.GLOBAL,
+                              tool_details=('ps-ums', config['version']))
 
 LOG_LEVEL = logging.DEBUG if os.environ.get("DEBUG") == 1 else logging.INFO
 logging.basicConfig(level=LOG_LEVEL,
