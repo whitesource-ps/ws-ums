@@ -85,6 +85,7 @@ class CreateUserRequest(BaseModel):
     wsRole: str
     ghOrgNames: list
 
+    @staticmethod
     @validator('wsRole')
     def validate_ws_role(cls, ws_role):
         if ws_role not in ws_constants.RoleTypes.PROD_ROLES_TYPES:

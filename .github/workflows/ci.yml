@@ -20,8 +20,21 @@ jobs:
       matrix:
         python-version: [3.8]
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+      - name: Set Environment Variables
+      run: |
+        echo "RELEASE=false" >> $GITHUB_ENV
+        echo "VERSION=0.0.0.ci0" >> $GITHUB_ENV
+        echo "TOOL_DIR=$TOOL_NAME" >> $GITHUB_ENV
+        if [[ $GITHUB_REF == refs/tags/v* ]]; then
+          echo "VERSION=$(echo ${{github.ref}} |  sed -r 's/^[\/a-zA-z-]+//')" >> $GITHUB_ENV
+          if [[ $VERSION != *@(a|b)* ]]; then
+            echo "RELEASE=true" >> $GITHUB_ENV
+          fi
+        fi
+      - name: Set package version
+        run: |
+          sed -E -i  "s/^__version__ = \"[a-z0-9\.]+\"/__version__ = \"$VERSION\"/g"  ${{ env.TOOL_DIR }}/_version.py
+      - uses: actions/checkout@v2
       - uses: UnicornGlobal/trufflehog-actions-scan@master
         with:
           branch: ${{ github.head_ref }}
@@ -42,6 +55,17 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Unittesting
         run: python -m unittest
+      - name: Prepare tag
+        if: contains(github.ref, 'refs/tags/')
+        id: prep
+        run: |
+          DOCKER_IMAGE=whitesourcetools/ws-sbom-generator
+          TAGS="${DOCKER_IMAGE}:latest"
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            TAG_V=${GITHUB_REF#refs/tags/v}
+            TAGS="$TAGS,${DOCKER_IMAGE}:${TAG_V}"
+          fi
+          echo "TAGS=$TAGS" >> $GITHUB_ENV
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
         with:
@@ -58,7 +82,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ env.TAGS }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Publish to Confluence
         if: github.ref == 'refs/heads/master'
