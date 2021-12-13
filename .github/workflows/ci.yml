@@ -13,6 +13,8 @@ env:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      TOOL_NAME: ws_ums
     permissions:
       contents: read
       packages: write
