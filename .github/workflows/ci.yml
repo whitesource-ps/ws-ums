@@ -1,4 +1,4 @@
-name: WS Python SDK Build and Publish - Master
+name: CI
 on:
   push:
     branches:
@@ -71,8 +71,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{version}},,value=${{ env.VERSION}}
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
         with:
