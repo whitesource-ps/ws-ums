@@ -21,16 +21,16 @@ jobs:
         python-version: [3.8]
     steps:
       - name: Set Environment Variables
-      run: |
-        echo "RELEASE=false" >> $GITHUB_ENV
-        echo "VERSION=0.0.0.ci0" >> $GITHUB_ENV
-        echo "TOOL_DIR=$TOOL_NAME" >> $GITHUB_ENV
-        if [[ $GITHUB_REF == refs/tags/v* ]]; then
-          echo "VERSION=$(echo ${{github.ref}} |  sed -r 's/^[\/a-zA-z-]+//')" >> $GITHUB_ENV
-          if [[ $VERSION != *@(a|b)* ]]; then
-            echo "RELEASE=true" >> $GITHUB_ENV
+        run: |
+          echo "RELEASE=false" >> $GITHUB_ENV
+          echo "VERSION=0.0.0.ci0" >> $GITHUB_ENV
+          echo "TOOL_DIR=$TOOL_NAME" >> $GITHUB_ENV
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            echo "VERSION=$(echo ${{github.ref}} |  sed -r 's/^[\/a-zA-z-]+//')" >> $GITHUB_ENV
+            if [[ $VERSION != *@(a|b)* ]]; then
+              echo "RELEASE=true" >> $GITHUB_ENV
+            fi
           fi
-        fi
       - name: Set package version
         run: |
           sed -E -i  "s/^__version__ = \"[a-z0-9\.]+\"/__version__ = \"$VERSION\"/g"  ${{ env.TOOL_DIR }}/_version.py
@@ -93,4 +93,3 @@ jobs:
           cloud: whitesource
           user: ${{ secrets.CONFLUENCE_USER }}
           token: ${{ secrets.CONFLUENCE_TOKEN }}
-
