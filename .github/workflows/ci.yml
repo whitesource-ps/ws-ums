@@ -58,7 +58,6 @@ jobs:
       - name: Unittesting
         run: python -m unittest
       - name: Prepare tag
-        if: contains(github.ref, 'refs/tags/')
         id: prep
         run: |
           DOCKER_IMAGE=whitesourcetools/ws-sbom-generator
