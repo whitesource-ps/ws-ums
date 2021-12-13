@@ -85,6 +85,8 @@ jobs:
           push: true
           tags: ${{ env.TAGS }}
           labels: ${{ steps.meta.outputs.labels }}
+          secrets: |
+            GIT_AUTH_TOKEN=${{ secrets.GITHUB_TOKEN }}
       - name: Publish to Confluence
         if: github.ref == 'refs/heads/master'
         uses: cupcakearmy/confluence-markdown-sync@v1
