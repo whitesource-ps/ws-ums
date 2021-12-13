@@ -81,7 +81,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
       - name: Publish to Confluence
-        if: github.ref == 'refs/heads/master'
+        if: ${{ env.RELEASE == true }}
         uses: cupcakearmy/confluence-markdown-sync@v1
         with:
           from: README.md
