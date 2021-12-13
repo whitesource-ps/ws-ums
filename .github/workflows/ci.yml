@@ -4,7 +4,7 @@ on:
     branches:
       - '**'
     tags:
-      - 'v*'
+      - '*'
   schedule:
     - cron: '0 4 * * *'
 env:
@@ -33,10 +33,10 @@ jobs:
               echo "RELEASE=true" >> $GITHUB_ENV
             fi
           fi
+      - uses: actions/checkout@v2
       - name: Set package version
         run: |
           sed -E -i  "s/^__version__ = \"[a-z0-9\.]+\"/__version__ = \"$VERSION\"/g"  ${{ env.TOOL_DIR }}/_version.py
-      - uses: actions/checkout@v2
       - uses: UnicornGlobal/trufflehog-actions-scan@master
         with:
           branch: ${{ github.head_ref }}
