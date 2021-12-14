@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Set Environment Variables
         run: |
-          export TOOL_NAME=$(echo ${{github.repository}} tr '-' '_')
+          export TOOL_NAME=$(echo ${{github.repository}} | tr '-' '_')
           echo "TOOL_NAME=$TOOL_NAME" >> $GITHUB_ENV
           echo "RELEASE=false" >> $GITHUB_ENV
           echo "VERSION=0.0.0.ci0" >> $GITHUB_ENV
