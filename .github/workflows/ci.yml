@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Set Environment Variables
         run: |
-          export TOOL_NAME=$(echo ${{ github.event.repository.name }} | tr '-' '_')
+          TOOL_NAME=$(echo '${{ github.repository }}' |awk -F '/' '{gsub(/-/, "_", $0) ;print $NF}'
           echo "TOOL_NAME=$TOOL_NAME" >> $GITHUB_ENV
           echo "RELEASE=false" >> $GITHUB_ENV
           echo "VERSION=0.0.0.ci0" >> $GITHUB_ENV
@@ -80,7 +80,7 @@ jobs:
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
       - name: Publish to Confluence
-        if: ${{ env.RELEASE == true }}
+        if: ${{ env.RELEASE }}
         uses: cupcakearmy/confluence-markdown-sync@v1
         with:
           from: README.md
