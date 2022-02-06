@@ -83,7 +83,7 @@ jobs:
         uses: cupcakearmy/confluence-markdown-sync@v1
         with:
           from: README.md
-          to: 2260402185
+          to: 2468971131
           cloud: whitesource
           user: ${{ secrets.CONFLUENCE_USER }}
           token: ${{ secrets.CONFLUENCE_TOKEN }}

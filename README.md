@@ -1,6 +1,5 @@
 ![Logo](https://whitesource-resources.s3.amazonaws.com/ws-sig-images/Whitesource_Logo_178x44.png)
-[![License](https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg)](https://opensource.org/licenses/Apache-2.0)]
-[![GitHub release](https://img.shields.io/github/v/release/whitesource-ps/ws-ums)](https://github.com/whitesource-ps/ws-ums/releases/latest)  
+[![License](https://img.shields.io/badge/License-Apache%202.0-yellowgreen.svg)](https://opensource.org/licenses/Apache-2.0)] 
 
 # WhiteSource IAM User Management
 API Service to perform users operations on large scale environment (Global Organizations).
@@ -40,5 +39,4 @@ docker pull ghcr.io/whitesource-ps/ws-ums:latest
 docker run --name ws-ums -p 8432:8432 -e WS_USER_KEY=<WS_USER_KEY> -e WS_GLOBAL_TOKEN=<WS_GLOBAL_TOKEN> -e WS_URL=<WS_URL> \
 -e WS_INVITER=<WS_INVITER> -v /<PATH>:/tmp whitesourcetools/ws-ums
 ```
-
 
